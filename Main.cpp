@@ -6,6 +6,7 @@
 #include <utility>
 #include <codecvt>
 #include <locale>
+#include <math.h>
 
 //to convert wstring to string for loading
 using convert_t = std::codecvt_utf8<wchar_t>;
@@ -47,7 +48,8 @@ private:
 	olc::Decal* dCursor = nullptr;
 
 	int CurrentMode = 0;
-	std::string* inputs = new std::string[4]{ "" };
+	std::string* inputs = new std::string[2]{ "" };
+	int sizeSel = 0;
 	int inputSel = 0;
 	int currentLayer = 1;
 
@@ -57,7 +59,6 @@ private:
 public:
 	bool OnUserCreate() override
 	{
-		rInteractSet.Load("InterSheet.png");
 
 		return true;
 	}
@@ -149,14 +150,16 @@ public:
 			//new map mode
 			DrawString(160, 4, "    Map Width:", olc::WHITE, 2);
 			DrawString(160, 20, "   Map Height:", olc::WHITE, 2);
-			DrawString(160, 36, " Sprite Width:", olc::WHITE, 2);
-			DrawString(160, 52, "Sprite Height:", olc::WHITE, 2);
+			DrawString(160, 36, "  Sprite Size:", olc::WHITE, 2);
 
 			DrawString(4, 15, "Use your keyboard\nto fill the fields", olc::WHITE);
 
 			//draw the inputs in the correct position
-			for (int i = 0; i < 4; i++)
+			for (int i = 0; i < 2; i++)
 				DrawString(390, ((i * 16) + 4), inputs[i], olc::WHITE, 2);
+
+			//draw the size correspondant to the currect selection
+			DrawString(390, 36, std::to_string(8 * (int)pow(2, sizeSel)) + "x" + std::to_string(8 * (int)pow(2, sizeSel)), olc::WHITE, 2);
 
 			//draw an arrow on the current selection
 			DrawString(378, ((inputSel * 16) + 4), ">", olc::RED, 2);
@@ -166,14 +169,14 @@ public:
 				if (GetMouse(0).bPressed) inputSel = 0;
 			if (vMouse.x >= 160 && vMouse.y >= 20 && vMouse.y < 36)
 				if (GetMouse(0).bPressed) inputSel = 1;
+
+			//change the size of the sprites
 			if (vMouse.x >= 160 && vMouse.y >= 36 && vMouse.y < 52)
-				if (GetMouse(0).bPressed) inputSel = 2;
-			if (vMouse.x >= 160 && vMouse.y >= 52 && vMouse.y < 68)
-				if (GetMouse(0).bPressed) inputSel = 3;
+				if (GetMouse(0).bPressed) if (sizeSel < 4) sizeSel++; else sizeSel = 0;
 
 			//Allow for controlled user inputs to fill in the fields and change selections up to 4 digits
 			if (GetKey(olc::DOWN).bPressed)
-				if (inputSel != 3) inputSel++;
+				if (inputSel != 1) inputSel++;
 			if (GetKey(olc::UP).bPressed)
 				if (inputSel != 0) inputSel--;
 
@@ -201,8 +204,8 @@ public:
 			}
 			//enter should move to the next selection field or to edit mode if all fields are filled
 			if (GetKey(olc::ENTER).bPressed || GetKey(olc::RETURN).bPressed) {
-				if (inputSel != 3) { inputSel++; }
-				else if (inputs[0].length() != 0 || inputs[1].length() != 0 || inputs[2].length() != 0 || inputs[3].length() != 0) {
+				if (inputSel != 1) { inputSel++; }
+				else if (inputs[0].length() != 0 || inputs[1].length() != 0) {
 					//open file explorer to find a tile set
 					FindFile("Tileset");
 					if (tilePath.length() != 0) {
@@ -213,7 +216,7 @@ public:
 			}
 
 			//grey out the next button until all fields have inputs
-			if (inputs[0].length() == 0 || inputs[1].length() == 0 || inputs[2].length() == 0 || inputs[3].length() == 0)
+			if (inputs[0].length() == 0 || inputs[1].length() == 0)
 			{
 				DrawString(160, 75, "Next", olc::DARK_GREY, 2);
 			}
@@ -330,7 +333,7 @@ public:
 
 
 			//set the tile the mouse was clicked on to the selected tile on the selected layer
-			if (GetMouse(0).bPressed)
+			if (GetMouse(0).bHeld)
 			{
 				if (currentLayer == 1)
 				{
@@ -352,7 +355,7 @@ public:
 			}
 
 			//delete the tile if the mouse was right clicked
-			if (GetMouse(1).bPressed)
+			if (GetMouse(1).bHeld)
 			{
 				if (currentLayer == 1)
 				{
@@ -548,7 +551,33 @@ public:
 	{
 		//take user input to determine the map and tiles size
 		vWorldSize = { std::stoi(inputs[0]), std::stoi(inputs[1]) };
-		vTileSize = { std::stoi(inputs[2]), std::stoi(inputs[3]) };
+		switch (sizeSel) {
+		case(0): vTileSize = { 8, 8 }; 
+			  rInteractSet.Load("InterSheet8.png");
+			  vDimensionsInter = SpriteSize("InterSheet8.png");
+			  break;
+		case(1): vTileSize = { 16, 16 }; 
+			  rInteractSet.Load("InterSheet16.png");
+			  vDimensionsInter = SpriteSize("InterSheet16.png");
+			  break;
+		case(2): vTileSize = { 32, 32 }; 
+			  rInteractSet.Load("InterSheet32.png");
+			  vDimensionsInter = SpriteSize("InterSheet32.png");
+			  break;
+		case(3): vTileSize = { 64, 64 }; 
+			  rInteractSet.Load("InterSheet64.png");
+			  vDimensionsInter = SpriteSize("InterSheet64.png");
+			  break;
+		case(4): vTileSize = { 128, 128 }; 
+			  rInteractSet.Load("InterSheet128.png");
+			  vDimensionsInter = SpriteSize("InterSheet128.png");
+			  break;
+		default: std::cout << "Error in TileSize. Setting to 8x8." << std::endl; 
+			vTileSize = { 8, 8 };
+			rInteractSet.Load("InterSheet8.png");
+			vDimensionsInter = SpriteSize("InterSheet8.png"); 
+			break;
+		}
 		
 		int nSize = vWorldSize.x * vWorldSize.y;
 		std::string tiles(tilePath.begin(), tilePath.end());
@@ -556,7 +585,6 @@ public:
 		//load the sprites and world
 		rTileSet.Load(tiles);
 		vDimensions = SpriteSize(tiles);
-		vDimensionsInter = SpriteSize("InterSheet.png");
 		pWorld = new int[nSize]{ 0 };
 		pWorldLayer = new int[nSize]{ 0 };
 		std::fill_n(pWorldLayer, nSize, -1);
@@ -571,8 +599,9 @@ public:
 		dCursor = new olc::Decal(sCursor);
 
 		//reset the inputs
-		for(int i = 0; i < 4; i++)
+		for(int i = 0; i < 2; i++)
 			inputs[i] = "";
+		sizeSel = 0;
 	}
 
 	//method to find the size of the spritesheet
@@ -695,7 +724,32 @@ public:
 			//initialize other needed variables
 			std::string tiles(tilePath.begin(), tilePath.end());
 			rTileSet.Load(tiles);
-			vDimensionsInter = SpriteSize("InterSheet.png");
+			switch (vTileSize.x) {
+			case(8):
+				  rInteractSet.Load("InterSheet8.png");
+				  vDimensionsInter = SpriteSize("InterSheet8.png");
+				  break;
+			case(16):
+				  rInteractSet.Load("InterSheet16.png");
+				  vDimensionsInter = SpriteSize("InterSheet16.png");
+				  break;
+			case(32):
+				  rInteractSet.Load("InterSheet32.png");
+				  vDimensionsInter = SpriteSize("InterSheet32.png");
+				  break;
+			case(64):
+				  rInteractSet.Load("InterSheet64.png");
+				  vDimensionsInter = SpriteSize("InterSheet64.png");
+				  break;
+			case(128):
+				  rInteractSet.Load("InterSheet128.png");
+				  vDimensionsInter = SpriteSize("InterSheet128.png");
+				  break;
+			default: std::cout << "Error loading TileSize. Setting to 8x8." << std::endl;
+				rInteractSet.Load("InterSheet8.png");
+				vDimensionsInter = SpriteSize("InterSheet8.png");
+				break;
+			}
 			pWorld = new int[nSize] { 0 };
 			pWorldLayer = new int[nSize] { 0 };
 			pWorldInter = new int[nSize] { 0 };
@@ -720,7 +774,7 @@ public:
 			dCursor = new olc::Decal(sCursor);
 
 			//reset the inputs
-			for (int i = 0; i < 4; i++)
+			for (int i = 0; i < 2; i++)
 				inputs[i] = "";
 		}
 	
@@ -746,7 +800,7 @@ public:
 				if (j < vWorldSize.x && i < vWorldSize.y) {
 					newpWorld[(i * x) + j] = pWorld[(i * vWorldSize.x) + j];
 					newpWorldLayer[(i * x) + j] = pWorldLayer[(i * vWorldSize.x) + j];
-					newpWorldInter[(i * x) + j] = pWorldLayer[(i * vWorldSize.x) + j];
+					newpWorldInter[(i * x) + j] = pWorldInter[(i * vWorldSize.x) + j];
 				}
 			}
 
